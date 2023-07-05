@@ -1,12 +1,13 @@
 #!/bin/bash
 CURRENT_WORKING_DIRECTORY=$CWD
 
-link=$1
-wget -O ~/"Python-$LATEST_RELEASE_VERSION.tgz" "$link"
+LINK=$1
+VERSION=$2
+wget -O ~/"Python-$VERSION.tgz" "$LINK"
 cd ~ || exit
-tar zxvf ~/"Python-$LATEST_RELEASE_VERSION.tgz"
-cd ~/"Python-$LATEST_RELEASE_VERSION" || exit
+tar zxvf ~/"Python-$VERSION.tgz"
+cd ~/"Python-$VERSION" || exit
 ./configure --enable-optimizations
-make -j
-sudo make -j altinstall
+make
+sudo make altinstall
 cd "$CURRENT_WORKING_DIRECTORY" || exit

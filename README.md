@@ -1,11 +1,11 @@
-# Python Updater
+# Python Updater for Ubuntu
 
-This script updates all active releases of Python, even the pre-release ones.
+This script updates all active releases of Python, even the pre-release ones. This is for people who can't use [ppa:deadsnakes](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) because you are an update freak like me and not using LTS.
 
-If you have a script that runs on an old Python version, it's best to find another repository that hasn't been abandoned for over 5 years.
+If you have a script that runs on an end of life Python version, it's best to find another repository that hasn't been abandoned for over 5 years.
 
 ---
-**Feel free to contribute for your code, if anyone sees this at all.**
+**Feel free to contribute your code, if anyone sees this at all.**
 
 ---
 
@@ -18,6 +18,7 @@ If you have a script that runs on an old Python version, it's best to find anoth
 ### For Ubuntu:
 ```shell
 sudo chmod +x UpdatePython.sh
+sudo chmod +x InstallPython.sh
 ./UpdatePython.sh
 ```
 
