@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Build dependencies
-#CODENAME=$(grep -oP "CODENAME=\K\w+" < /etc/lsb-release)
 sudo apt-get update
 sudo apt-get build-dep -y python3 || exit
 sudo apt-get upgrade -y pkg-config build-essential gdb lcov pkg-config \
@@ -38,7 +37,6 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
     if [ "$LATEST_RELEASE_VERSION" != "$CURRENT_PYTHON_VERSION" ]; then
         TO_BE_UPDATED+=("$LATEST_RELEASE_VERSION")
         echo "New release available: $LATEST_RELEASE_VERSION (Your version: $CURRENT_PYTHON_VERSION)"
-        echo Downloading "$LATEST_RELEASE_VERSION"
         if [ "$PRE_RELEASE" == 0 ]; then
             gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
         else

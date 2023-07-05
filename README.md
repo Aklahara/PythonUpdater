@@ -15,6 +15,10 @@ If you have a script that runs on an end of life Python version, it's best to fi
 3. Your python version is checked, if it does not exist, the version will be `None`.
 4. All active Python versions will be updated/installed based on that information.
 
+**Note: All python will be installed in `/usr/local/bin` so it doesn't interfere with the system's python3 (For noobs: Don't change the system python version, it breaks things).**
+
+---
+## Tutorial
 ### For Ubuntu:
 ```shell
 sudo chmod +x UpdatePython.sh
