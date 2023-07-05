@@ -20,6 +20,10 @@ If you have a script that runs on an end of life Python version, it's best to fi
 ---
 ## Tutorial
 ### For Ubuntu:
+#### First time only:
+```shell
+sudo bash -c 'CODENAME=$(grep -oP "CODENAME=\K\w+" < /etc/lsb-release); echo "deb-src http://archive.ubuntu.com/ubuntu/ $CODENAME main restricted" >> /etc/apt/sources.list'
+```
 ```shell
 sudo chmod +x UpdatePython.sh
 sudo chmod +x InstallPython.sh
