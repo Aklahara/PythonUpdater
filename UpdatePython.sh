@@ -16,8 +16,11 @@ echo "Downloading pre-release information"
 PRE_RELEASES_INFO=$(wget -O - https://www.python.org/download/pre-releases/)
 echo
 
-# Extract the active release version numbers (-v "2.7" because it is commented)
-ACTIVE_RELEASE_VERSIONS=$(echo "$RELEASES_INFO" | grep -oP '>\K\d\.\d+(?=<)' | grep -v "2.7")
+# Extract the active release version numbers
+# sed 's/<!--/\x0<!--/g;s/-->/-->\x0/g' replaces <!-- with \x0<!-- and --> with -->\x0
+# grep -zv '^<!--' removes the lines that start with \x0<!-- because the -z option treat null characters as line separators instead of '\n', and the -v option inverts the matching.
+# tr -d '\0' removes the null characters to prevent errors
+ACTIVE_RELEASE_VERSIONS=$(echo "$RELEASES_INFO" | sed 's/<!--/\x0<!--/g;s/-->/-->\x0/g' | grep -zv '^<!--' | tr -d '\0' | grep -oP '>\K\d\.\d+(?=<)')
 TO_BE_UPDATED=()
 
 for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
@@ -38,9 +41,9 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
         TO_BE_UPDATED+=("$LATEST_RELEASE_VERSION")
         echo "New release available: $LATEST_RELEASE_VERSION (Your version: $CURRENT_PYTHON_VERSION)"
         if [ "$PRE_RELEASE" == 0 ]; then
-            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
         else
-            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
         fi
     else
         echo "$CURRENT_PYTHON_VERSION" is the newest version.
