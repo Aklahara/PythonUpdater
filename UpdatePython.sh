@@ -41,9 +41,9 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
         TO_BE_UPDATED+=("$LATEST_RELEASE_VERSION")
         echo "New release available: $LATEST_RELEASE_VERSION (Your version: $CURRENT_PYTHON_VERSION)"
         if [ "$PRE_RELEASE" == 0 ]; then
-            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
         else
-            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
         fi
     else
         echo "$CURRENT_PYTHON_VERSION" is the newest version.
