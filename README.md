@@ -24,6 +24,11 @@ If you have a script that runs on an end of life Python version, it's best to fi
 ```shell
 sudo bash -c 'CODENAME=$(grep -oP "CODENAME=\K\w+" < /etc/lsb-release); echo "deb-src http://archive.ubuntu.com/ubuntu/ $CODENAME main restricted" >> /etc/apt/sources.list'
 ```
+#### Optional:
+```shell
+sudo su  # Activate root if you don't want to type passwords
+```
+
 ```shell
 sudo chmod +x UpdatePython.sh
 sudo chmod +x InstallPython.sh
