@@ -6,7 +6,7 @@ sudo apt-get build-dep -y python3 || exit
 sudo apt-get upgrade -y pkg-config build-essential gdb lcov pkg-config \
         libbz2-dev libffi-dev libgdbm-dev libgdbm-compat-dev liblzma-dev \
         libncurses5-dev libreadline6-dev libsqlite3-dev libssl-dev \
-        lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+        lzma lzma-dev tk-dev uuid-dev zlib1g-dev dbus-x11
 
 # Fetch the latest and active Python release information
 echo "Downloading release information"
@@ -28,22 +28,23 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
     # Extract the latest release version number
     LATEST_RELEASE_VERSION=$(echo "$RELEASES_INFO" | grep -oP "Python \K$CHECK_VERSION.\d+")
     # Get the current Python version
-    CURRENT_PYTHON_VERSION=$(python"$CHECK_VERSION" --version | grep -oP "\d.\d+.\d+(\w\d+)?") || CURRENT_PYTHON_VERSION=None
+    CURRENT_PYTHON_VERSION=$(python"$CHECK_VERSION" --version | grep -oP "\d.\d+.\d+(\D\D\d+)?") || CURRENT_PYTHON_VERSION=None
 
     if ! [[ "$LATEST_RELEASE_VERSION" ]]; then
-        LATEST_RELEASE_VERSION=$(echo "$PRE_RELEASES_INFO" | grep -oP "Python \K\d.\d+.\d\D\d")
+        LATEST_RELEASE_VERSION=$(echo "$PRE_RELEASES_INFO" | sed 's/<!--/\x0<!--/g;s/-->/-->\x0/g' | grep -zv '^<!--' | tr -d '\0' | grep -oP "Python \K\d.\d+.\d\D+\d")
         PRE_RELEASE=1
     fi
 
     LATEST_RELEASE_VERSION=$(echo "$LATEST_RELEASE_VERSION" | sort -Vr | head -n 1)
+    # CURRENT_PYTHON_VERSION="TEST"
 
     if [ "$LATEST_RELEASE_VERSION" != "$CURRENT_PYTHON_VERSION" ]; then
         TO_BE_UPDATED+=("$LATEST_RELEASE_VERSION")
         echo "New release available: $LATEST_RELEASE_VERSION (Your version: $CURRENT_PYTHON_VERSION)"
         if [ "$PRE_RELEASE" == 0 ]; then
-            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION"
         else
-            gnome-terminal -x bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION; exec bash"
+            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION"
         fi
     else
         echo "$CURRENT_PYTHON_VERSION" is the newest version.
