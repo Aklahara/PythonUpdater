@@ -28,7 +28,10 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
     # Extract the latest release version number
     LATEST_RELEASE_VERSION=$(echo "$RELEASES_INFO" | grep -oP "Python \K$CHECK_VERSION.\d+")
     # Get the current Python version
-    CURRENT_PYTHON_VERSION=$(python"$CHECK_VERSION" --version | grep -oP "\d.\d+.\d+(\D\D\d+)?") || CURRENT_PYTHON_VERSION=None
+    # "\d.\d+.\d+" checks for Python Version
+    # "(\D\D\d+)?" checks for rc versions
+    # "(\D\d+)?" checks for alpha or beta versions
+    CURRENT_PYTHON_VERSION=$(python"$CHECK_VERSION" --version | grep -oP "\d.\d+.\d+(\D\D\d+)?(\D\d+)?") || CURRENT_PYTHON_VERSION=None
 
     if ! [[ "$LATEST_RELEASE_VERSION" ]]; then
         LATEST_RELEASE_VERSION=$(echo "$PRE_RELEASES_INFO" | sed 's/<!--/\x0<!--/g;s/-->/-->\x0/g' | grep -zv '^<!--' | tr -d '\0' | grep -oP "Python \K\d.\d+.\d\D+\d")
