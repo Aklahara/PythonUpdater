@@ -29,6 +29,7 @@ sudo bash -c 'CODENAME=$(grep -oP "CODENAME=\K\w+" < /etc/lsb-release); echo "de
 sudo su  # Activate root if you don't want to type passwords
 ```
 
+#### Run:
 ```shell
 sudo chmod +x UpdatePython.sh
 sudo chmod +x InstallPython.sh
