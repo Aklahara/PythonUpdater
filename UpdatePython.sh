@@ -39,15 +39,30 @@ for CHECK_VERSION in $ACTIVE_RELEASE_VERSIONS; do
     fi
 
     LATEST_RELEASE_VERSION=$(echo "$LATEST_RELEASE_VERSION" | sort -Vr | head -n 1)
-    # CURRENT_PYTHON_VERSION="TEST"
+    CURRENT_PYTHON_VERSION="TEST"
 
     if [ "$LATEST_RELEASE_VERSION" != "$CURRENT_PYTHON_VERSION" ]; then
         TO_BE_UPDATED+=("$LATEST_RELEASE_VERSION")
         echo "New release available: $LATEST_RELEASE_VERSION (Your version: $CURRENT_PYTHON_VERSION)"
         if [ "$PRE_RELEASE" == 0 ]; then
-            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION"
+            gnome-terminal --wait -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$LATEST_RELEASE_VERSION/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION" &
         else
-            gnome-terminal -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION"
+            gnome-terminal --wait -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$LATEST_RELEASE_VERSION" | grep -oP "\d.\d+.\d+")/Python-$LATEST_RELEASE_VERSION.tgz $LATEST_RELEASE_VERSION" &
+        fi
+
+        PID=$!
+        wait $PID
+
+        if [ -f /tmp/install_python_exit_status ]; then
+          INSTALL_STATUS=$(cat /tmp/install_python_exit_status)
+          rm /tmp/install_python_exit_status
+          if [ "$INSTALL_STATUS" -eq 0 ]; then
+              echo "$CURRENT_PYTHON_VERSION" successfully installed
+          else
+              echo "The installation script exited with status: $INSTALL_STATUS"
+          fi
+        else
+            echo "Complete (exit status file not found)"
         fi
     else
         echo "$CURRENT_PYTHON_VERSION" is the newest version.
