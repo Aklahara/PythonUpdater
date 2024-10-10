@@ -1,20 +1,26 @@
 #!/bin/bash
 
+GIL_JIT=$1
+
 # Build dependencies
+# clang-18 is added for python3.13 compilation
 sudo apt-get update
 sudo apt-get build-dep -y python3-defaults || exit 1
 sudo apt-get upgrade -y pkg-config build-essential gdb lcov pkg-config \
         libbz2-dev libffi-dev libgdbm-dev libgdbm-compat-dev liblzma-dev \
         libncurses5-dev libreadline6-dev libsqlite3-dev libssl-dev \
-        lzma lzma-dev tk-dev uuid-dev zlib1g-dev dbus-x11
+        lzma lzma-dev tk-dev uuid-dev zlib1g-dev dbus-x11\
+        clang-18
         
 # Fetch the latest and active Python release information
 # The site is encoded with gzip, therefore the information must be unzipped first
 echo "Downloading release information"
 RELEASES_INFO=$(wget -O - https://www.python.org/downloads/ | gzip -d)
 echo
+
+# It seems they reverted to not encoding it with gzip
 echo "Downloading pre-release information"
-PRE_RELEASES_INFO=$(wget -O - https://www.python.org/download/pre-releases/ | gzip -d)
+PRE_RELEASES_INFO=$(wget -O - https://www.python.org/download/pre-releases/)  # | gzip -d)
 echo
 
 # Extract the active release version numbers
@@ -66,7 +72,7 @@ else
         pre_release=${TO_BE_UPDATED[i+1]}
         echo Installing "$version"
         if [ "$pre_release" == 0 ]; then
-            gnome-terminal --wait -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$version/Python-$version.tgz $version"
+            gnome-terminal --wait -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$version/Python-$version.tgz $version $GIL_JIT"
         else
             gnome-terminal --wait -- bash -c "./InstallPython.sh https://www.python.org/ftp/python/$(echo "$version" | grep -oP "\d.\d+.\d+")/Python-$version.tgz $version"
         fi

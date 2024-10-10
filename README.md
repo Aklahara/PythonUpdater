@@ -1,6 +1,6 @@
 # Python Updater for Ubuntu
 
-This script updates all active releases of Python, even the pre-release ones. This is for people who can't use [ppa:deadsnakes](https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa) because you are an update freak like me and not using LTS.
+This script updates all active releases of Python, even the pre-release ones. This is for people who likes building things from source because mental health is not a thing for you.
 
 If you have a script that runs on an end of life Python version, it's best to find another repository that hasn't been abandoned for over 5 years.
 
@@ -27,7 +27,21 @@ For the change log please check [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 ## Tutorial
-### For Ubuntu:
+### For Ubuntu 24.04 or after:
+#### First time only:
+Go to `Software and Updates` and select `Source Code` under `Ubuntu Software`
+#### Run:
+```shell
+sudo chmod +x main.sh
+sudo chmod +x InstallPython.sh
+./main.sh
+```
+#### To disable GIL and add JIT compiler for Python 3.13.0
+```shell
+./main.sh put_anything_here_im_too_burnt_out_to_fix_it
+```
+
+### For Ubuntu 23.10 or before:
 #### First time only:
 ```shell
 sudo bash -c 'CODENAME=$(grep -oP "CODENAME=\K\w+" < /etc/lsb-release); echo "deb-src http://archive.ubuntu.com/ubuntu/ $CODENAME main restricted" >> /etc/apt/sources.list'
