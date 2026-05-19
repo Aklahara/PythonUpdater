@@ -1,3 +1,9 @@
+# v3.0.0
+- Began migration to Python textual from raw bash script.
+- Changed to menu style for flexibility in choice for installing.
+- Disabling GIL and JIT made exclusive because JIT is unstable without GIL, the ability to pass both options is disabled by Python in 3.14+ anyway. 
+- Changed release searching method from parsing the html from www.python.org to directly searching the Git repository from https://github.com/python/cpython.git.
+
 # v2.1.1
 - Added option to disable GIL and add JIT compiler for python 3.13 onwards
 
