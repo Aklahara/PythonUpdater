@@ -1,3 +1,9 @@
+# v3.0.1
+- Added footer to show bindings, replacing the top row.
+- Dedicated the top row for information only.
+- Hid EOL versions by default.
+- Added compile script to compile in nuitka.
+
 # v3.0.0
 - Began migration to Python textual from raw bash script.
 - Changed to menu style for flexibility in choice for installing.

@@ -18,6 +18,7 @@ _MARKUP_RE = re.compile(r'\[[^]]*]')
 # (label, column_key, width)
 COL_DEFS = [
     ("Version", "version", 7),
+    ("Status", "status", 8),
     ("Installed", "installed", 9),
     ("Update", "update", 10),
     ("PGO", "pgo", 5),
@@ -57,6 +58,26 @@ class MainHeader(Static):
 
     def on_mount(self) -> None:
         self.update(self.app.TITLE)
+
+
+class MainFooter(Static):
+    DEFAULT_CSS = """
+    MainFooter {
+        dock: bottom;
+        height: 1;
+        background: $panel;
+        color: $foreground;
+        text-align: left;
+    }
+    """
+
+    def on_mount(self) -> None:
+        parts = []
+        for binding in self.app.BINDINGS:
+            if isinstance(binding, Binding) and binding.show:
+                key_display = binding.key.replace("ctrl+", "^").upper()
+                parts.append(f"[bold]{key_display}[/bold] {binding.description}")
+        self.update("  ".join(parts))
 
 
 
@@ -134,12 +155,14 @@ class MainApp(App):
         Binding("ctrl+c", "quit", "Quit"),
         Binding("ctrl+q", "noop", "", show=False),
         Binding("r", "refresh", "Refresh"),
-        Binding("i", "install_selected", "Install", show=False),
-        Binding("backspace", "revert_row", "Revert", show=False),
-        Binding("1", "toggle_pgo", "Toggle PGO", show=False),
-        Binding("2", "toggle_lto", "Toggle LTO", show=False),
-        Binding("3", "toggle_gil", "Toggle GIL", show=False),
-        Binding("4", "toggle_jit", "Toggle JIT", show=False),
+        Binding("v", "toggle_eol", "Show EOL"),
+        Binding("i", "install_selected", "Install"),
+        Binding("enter", "noop", "Select Version"),  # Enter is not handled here, because shortcut from DataTable overrides this binding. This is just for showing up in the footer.
+        Binding("backspace", "revert_row", "Reset"),
+        Binding("1", "toggle_pgo", "PGO"),
+        Binding("2", "toggle_lto", "LTO"),
+        Binding("3", "toggle_gil", "GIL"),
+        Binding("4", "toggle_jit", "JIT"),
     ]
     CSS = """
     #status { height: 1; padding: 0 1; color: $text-muted; }
@@ -147,12 +170,16 @@ class MainApp(App):
     #version-table { height: 1fr; display: none; }
     """
 
+    def __init__(self):
+        super().__init__()
+        self._show_eol=False
+
     def compose(self) -> ComposeResult:
         yield MainHeader()
         yield Label("Fetching release information...", id="status")
         yield LoadingIndicator(id="loading")
         yield DataTable(id="version-table", cursor_type="row", zebra_stripes=True)
-        # yield Footer()
+        yield MainFooter()
 
     def on_mount(self) -> None:
         table: DataTable = self.query_one("#version-table", DataTable)
@@ -190,6 +217,15 @@ class MainApp(App):
     def _make_row_cells(self, pmv: PythonMajorVersion) -> list[Text]:
         installed = pmv.installed_version or NA
 
+        # Status cell
+        all_pre = pmv.releases and all(r.prerelease for r in pmv.releases)
+        if pmv.eol:
+            status_cell = "[red]EOL[/red]"
+        elif all_pre:
+            status_cell = "[magenta]PRE[/magenta]"
+        else:
+            status_cell = "[green]Active[/green]"
+
         target = self._desired_versions.get(pmv.major_version, pmv.latest)
         if not pmv.installed_version:
             update_cell = f"[cyan][underline]↓[/underline] {target}[/cyan]" if target else NA
@@ -224,6 +260,7 @@ class MainApp(App):
 
         return [
             left(f"[bold]{pmv.major_version}[/bold]"),
+            left(status_cell),
             left(installed),
             ctr(update_cell, "update") if update_cell == "[green]Newest[/green]" else left(update_cell),
             ctr(pgo_c, "pgo"),
@@ -249,9 +286,10 @@ class MainApp(App):
     def _populate_table(self, major_version_list: list[PythonMajorVersion]) -> None:
         table: DataTable = self.query_one("#version-table", DataTable)
         table.clear()
-        self._major_version_list = major_version_list
+        self._all_versions = major_version_list
+        self._major_version_list = [mv for mv in major_version_list if self._show_eol or not mv.eol]
 
-        # Initialise desired flags and versions once; preserve across refreshes
+        # Initialise desired flags and versions once; preserve across refreshesvvvvvr
         if not hasattr(self, "_desired_flags"):
             self._desired_flags: dict[str, BuildFlags] = {}
         if not hasattr(self, "_desired_versions"):
@@ -269,13 +307,14 @@ class MainApp(App):
                 )
 
         for mv in major_version_list:
+            if not self._show_eol and mv.eol:
+                continue
             table.add_row(*self._make_row_cells(mv), key=mv.major_version)
 
+        visible = [mv for mv in major_version_list if self._show_eol or not mv.eol]
         self.query_one("#loading").display = False
         self.query_one("#status", Label).update(
-            f"[dim]{len(major_version_list)} versions loaded — "
-            f"[bold]Enter[/bold] select  [bold]I[/bold] install  "
-            f"[bold]1-4[/bold] toggle PGO/LTO/GIL/JIT  [bold]R[/bold] refresh[/dim]"
+            f"[dim]{len(visible)} versions loaded.[/dim]"
         )
         table.display = True
         table.focus()
@@ -343,15 +382,62 @@ class MainApp(App):
             mv.releases[0],
         )
         desired = self._desired_flags.get(mv.major_version, BuildFlags())
+        self._enqueue_install(release, desired)
+
+    # ── install queue ─────────────────────────────────────────────────────────
+
+    def _enqueue_install(self, release: PythonRelease, flags: BuildFlags) -> None:
+        if not hasattr(self, "_install_queue"):
+            self._install_queue: list[tuple[PythonRelease, BuildFlags]] = []
+        if not hasattr(self, "_install_running"):
+            self._install_running = False
+
+        # Prevent duplicate entries for the same version in the queue
+        already_queued = any(r.version == release.version for r, _ in self._install_queue)
+        if self._install_running and already_queued:
+            return
+
+        if self._install_running:
+            self._install_queue.append((release, flags))
+            queue_len = len(self._install_queue)
+            self.query_one("#status", Label).update(
+                f"[yellow]Python {release.version} queued (position {queue_len}).[/yellow]"
+            )
+        else:
+            self._install_running = True
+            self.query_one("#status", Label).update(
+                f"[cyan]Installing Python {release.version}...[/cyan]"
+            )
+            self._run_installer(release, flags)
+
+    def _on_install_finished(self, release: PythonRelease) -> None:
+        if not hasattr(self, "_install_queue"):
+            self._install_queue = []
         self.query_one("#status", Label).update(
-            f"[cyan]Launching installer for Python {release.version}...[/cyan]"
+            f"[green]Python {release.version} finished.[/green]"
         )
-        self._run_installer(release, desired)
+        if self._install_queue:
+            next_release, next_flags = self._install_queue.pop(0)
+            remaining = len(self._install_queue)
+            hint = f"  ({remaining} remaining in queue)" if remaining else ""
+            self.query_one("#status", Label).update(
+                f"[cyan]Installing Python {next_release.version}...{hint}[/cyan]"
+            )
+            self._run_installer(next_release, next_flags)
+        else:
+            self._install_running = False
+        # Refresh version data to reflect newly installed version
+        self.load_versions()
 
     # ── misc actions ──────────────────────────────────────────────────────────
 
     def action_noop(self) -> None:
         pass
+
+    def action_toggle_eol(self) -> None:
+        self._show_eol = not self._show_eol
+        # Update footer binding label dynamically
+        self._populate_table(self._all_versions)
 
     def action_revert_row(self) -> None:
         table: DataTable = self.query_one("#version-table", DataTable)
@@ -372,6 +458,7 @@ class MainApp(App):
         )
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Shortcut is handled from DataTable"""
         if not hasattr(self, "_major_version_list"):
             return
         mv = self._major_version_list[event.cursor_row]
@@ -417,10 +504,7 @@ class MainApp(App):
             f"read -p 'Press Enter to close...'"
         ]
         subprocess.run(cmd)
-        self.call_from_thread(
-            self.query_one("#status", Label).update,
-            f"[green]Installer for Python {release.version} finished.[/green]"
-        )
+        self.call_from_thread(self._on_install_finished, release)
 
 
 if __name__ == "__main__":

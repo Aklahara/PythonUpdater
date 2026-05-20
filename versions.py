@@ -28,6 +28,7 @@ class PythonMajorVersion:
     releases: list                  # list[PythonRelease], sorted newest first
     installed_version: Optional[str] = None
     active: bool = True
+    eol: bool = False
     build_flags: Optional[BuildFlags] = None
 
     @property
@@ -107,6 +108,39 @@ def fetch_github_releases() -> list:
         return []
 
 
+def fetch_eol_versions() -> tuple[set[str], set[str]]:
+    """Return (eol_versions, known_versions) sets of major versions (e.g. '3.8')."""
+    try:
+        req = urllib.request.Request(
+            "https://endoflife.date/api/python.json",
+            headers={"Accept": "application/json", "Accept-Encoding": "gzip"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+            if resp.info().get("Content-Encoding") == "gzip":
+                raw = gzip.decompress(raw)
+            data = json.loads(raw)
+        from datetime import date
+        today = date.today()
+        eol_set: set[str] = set()
+        known_set: set[str] = set()
+        for entry in data:
+            eol_date = entry.get("eol")
+            cycle = entry.get("cycle", "")
+            known_set.add(cycle)
+            if eol_date and eol_date is not True:
+                try:
+                    if date.fromisoformat(str(eol_date)) < today:
+                        eol_set.add(cycle)
+                except ValueError:
+                    pass
+            elif eol_date is True:
+                eol_set.add(cycle)
+        return eol_set, known_set
+    except Exception:
+        return set(), set()
+
+
 def build_major_version_data() -> list:
     """Return a sorted list of Python Major Version from live data."""
     raw_releases = fetch_github_releases()
@@ -140,16 +174,22 @@ def build_major_version_data() -> list:
         )
         major_version_map.setdefault(major_version, []).append(release)
 
+    eol_versions, known_versions = fetch_eol_versions()
+
     result = []
     for major_version, releases in major_version_map.items():
         releases.sort(key=lambda r_: _version_tuple(r_.version), reverse=True)
         installed = get_installed_version(major_version)
         flags = get_build_flags(major_version) if installed else None
+        all_pre = all(r.prerelease for r in releases)
+        # EOL if: explicitly marked EOL, OR not known to the API and not a pure pre-release series
+        is_eol = major_version in eol_versions or (major_version not in known_versions and not all_pre)
         result.append(PythonMajorVersion(
             major_version=major_version,
             releases=releases,
             installed_version=installed,
-            active=True,
+            active=not is_eol,
+            eol=is_eol,
             build_flags=flags,
         ))
 
